@@ -7,11 +7,32 @@
    </parent>
    <modelVersion>4.0.0</modelVersion>
 
-   <artifactId>jboss-ejb3-cuckoo-server</artifactId>
+   <artifactId>jboss-cuckoo-server</artifactId>
 
    <name>JBoss Cuckoo Server</name>
 
+   <build>
+      <plugins>
+         <plugin>
+            <artifactId>maven-jar-plugin</artifactId>
+            <configuration>
+               <archive>
+                  <manifest>
+                     <addClasspath>true</addClasspath>
+                     <mainClass>org.jboss.cuckoo.server.Server</mainClass>
+                  </manifest>
+               </archive>
+            </configuration>
+         </plugin>
+      </plugins>
+   </build>
+
    <dependencies>
+      <dependency>
+         <groupId>${project.groupId}</groupId>
+         <artifactId>jboss-cuckoo-common</artifactId>
+      </dependency>
+
       <dependency>
          <groupId>junit</groupId>
          <artifactId>junit</artifactId>
