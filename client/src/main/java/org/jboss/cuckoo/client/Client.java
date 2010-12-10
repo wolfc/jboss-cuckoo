@@ -41,27 +41,33 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URL;
+import java.util.concurrent.Callable;
+import java.util.concurrent.FutureTask;
 
 /**
  * @author <a href="mailto:cdewolf@redhat.com">Carlo de Wolf</a>
  */
 public class Client
 {
-   private static void copy(InputStream input, OutputStream output) throws IOException
+   private static void copy(InputStream input, OutputStream output, boolean flushAfterEachWrite) throws IOException
    {
       byte buf[] = new byte[8192];
       BufferedInputStream in = new BufferedInputStream(input, buf.length);
       BufferedOutputStream out = new BufferedOutputStream(output, buf.length);
       int l;
       while((l = in.read(buf)) >= 0)
+      {
          out.write(buf, 0, l);
+         if(flushAfterEachWrite)
+            out.flush();
+      }
       out.flush();
    }
 
    public static void main(String args[]) throws Exception
    {
       // connect to cuckoo server
-      Socket socket = new Socket("localhost", 45451);
+      final Socket socket = new Socket("localhost", 45451);
 
       String hostname = InetAddress.getLocalHost().getHostName();
 
@@ -88,7 +94,7 @@ public class Client
                }
                InputStream in = url.openStream();
                httpExchange.sendResponseHeaders(200, 0);
-               copy(in, httpExchange.getResponseBody());
+               copy(in, httpExchange.getResponseBody(), false);
             }
             catch(Exception e)
             {
@@ -113,6 +119,20 @@ public class Client
          writer.write("E http://" + hostname + ":" + port + "/ " + args[0]);
          writer.newLine();
          writer.flush();
+
+         Callable<Void> sendInput = new Callable<Void>()
+         {
+            @Override
+            public Void call() throws Exception
+            {
+               copy(System.in, socket.getOutputStream(), true);
+               return null;
+            }
+         };
+         FutureTask<Void> task = new FutureTask<Void>(sendInput);
+         Thread thread = new Thread(task);
+         thread.setDaemon(true);
+         thread.start();
 
          ObjectInput in = new ObjectInputStream(socket.getInputStream());
          int ch;
